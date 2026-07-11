@@ -113,6 +113,64 @@ def get_last_synced_at() -> str | None:
     return _last_synced_at
 
 
+def check_unsynced_changes() -> bool:
+    """
+    Compare local file modification times and SQLite log timestamps against 
+    the last cloud push timestamp to detect unsynced changes.
+    """
+    if not DATABASE_URL:
+        return False
+    
+    last_sync = get_last_synced_at()
+    if not last_sync:
+        return True  # Never pushed/synced
+    
+    try:
+        # Parse ISO sync timestamp to datetime (UTC)
+        sync_dt = datetime.fromisoformat(last_sync)
+        if sync_dt.tzinfo is None:
+            sync_dt = sync_dt.replace(tzinfo=timezone.utc)
+            
+        # 1. Check Markdown file modification times
+        for fname in LIFE_FILES:
+            path = LIFE_DIR / fname
+            if path.is_file():
+                mtime_ts = path.stat().st_mtime
+                mtime_dt = datetime.fromtimestamp(mtime_ts, timezone.utc)
+                # Grace threshold: ignore difference if less than 2 seconds (filesystem delay)
+                if (mtime_dt - sync_dt).total_seconds() > 2:
+                    return True
+                    
+        # 2. Check SQLite log timestamps
+        sconn = sqlite3.connect(DB_SQLITE_PATH)
+        
+        # Check day logs max timestamp
+        cursor = sconn.execute("SELECT MAX(created_at) FROM day_logs")
+        max_day = cursor.fetchone()[0]
+        
+        # Check agent logs max timestamp
+        cursor = sconn.execute("SELECT MAX(created_at) FROM agent_logs")
+        max_agent = cursor.fetchone()[0]
+        sconn.close()
+        
+        # Compare SQLite timestamps with sync timestamp
+        for ts_str in [max_day, max_agent]:
+            if ts_str:
+                try:
+                    ts_dt = datetime.fromisoformat(ts_str)
+                    if ts_dt.tzinfo is None:
+                        ts_dt = ts_dt.replace(tzinfo=timezone.utc)
+                    if (ts_dt - sync_dt).total_seconds() > 2:
+                        return True
+                except Exception:
+                    pass
+    except Exception as e:
+        print(f"[Neon] Error checking unsynced changes: {e}")
+        return True  # Default to True on error to be safe
+        
+    return False
+
+
 def pull_from_neon() -> dict:
     """
     On startup: download markdown files + SQLite tables from Neon.

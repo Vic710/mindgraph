@@ -11,7 +11,7 @@ from backend.agents.decision_engine import decision_engine_graph
 from backend.agents.reflection_agent import reflection_agent_graph
 from backend.agents.chat_agent import chat_graph, list_thread_ids, delete_thread_by_id
 from backend.agents.logger import log_response, get_logs, delete_log, add_day_log, get_day_logs, delete_day_log
-from backend.neon import pull_from_neon, push_to_neon, get_last_synced_at, is_neon_available
+from backend.neon import pull_from_neon, push_to_neon, get_last_synced_at, is_neon_available, check_unsynced_changes
 
 def verify_api_token(x_mindgraph_token: str = Header(None)):
     """Global dependency to check for the custom API key header if set in config."""
@@ -105,6 +105,7 @@ def update_file(name: str, payload: FileUpdateRequest):
     if file_path.parent != LIFE_DIR:
         raise HTTPException(status_code=400, detail="Invalid file path")
     file_path.write_text(payload.content, encoding="utf-8")
+    push_to_neon()  # Auto-sync changes to cloud
     return {"status": "success", "message": f"{name} updated successfully"}
 
 @app.post("/api/files/snapshot")
@@ -177,6 +178,7 @@ def run_state_manager(payload: AgentRequest):
         final_message = result["messages"][-1]
         response_text = get_message_text(final_message)
         log_response("state_manager", payload.text, response_text)
+        push_to_neon()  # Auto-sync changes to cloud
         return {"response": response_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -192,6 +194,7 @@ def create_day_log(payload: DayLogRequest):
         raise HTTPException(status_code=400, detail="Note cannot be empty")
     try:
         entry = add_day_log(payload.note)
+        push_to_neon()  # Auto-sync changes to cloud
         return entry
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -213,6 +216,7 @@ def remove_day_log(log_id: int):
     """Delete a single day log note by id."""
     try:
         delete_day_log(log_id)
+        push_to_neon()  # Auto-sync changes to cloud
         return {"status": "deleted", "id": log_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -232,6 +236,7 @@ def run_decision_engine(payload: AgentRequest):
         final_message = result["messages"][-1]
         response_text = get_message_text(final_message)
         log_response("decision_engine", payload.text, response_text)
+        push_to_neon()  # Auto-sync changes to cloud
         return {"response": response_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -250,6 +255,7 @@ def run_reflection_agent(payload: AgentRequest):
         final_message = result["messages"][-1]
         response_text = get_message_text(final_message)
         log_response("reflection", payload.text or "Run weekly reflection.", response_text)
+        push_to_neon()  # Auto-sync changes to cloud
         return {"response": response_text}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -270,6 +276,7 @@ def remove_log(log_id: int):
     """Delete a specific log entry by id."""
     try:
         delete_log(log_id)
+        push_to_neon()  # Auto-sync changes to cloud
         return {"status": "deleted", "id": log_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -349,4 +356,5 @@ def neon_status():
     return {
         "available": is_neon_available(),
         "last_synced_at": get_last_synced_at(),
+        "has_unsynced_changes": check_unsynced_changes(),
     }

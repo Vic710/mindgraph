@@ -277,7 +277,6 @@ export default function App() {
   // Neon sync state
   const [neonAvailable, setNeonAvailable] = useState(false);
   const [neonLastSynced, setNeonLastSynced] = useState(null);
-  const [loadingNeonPush, setLoadingNeonPush] = useState(false);
 
   const isSunday = new Date().getDay() === 0;
 
@@ -321,6 +320,7 @@ export default function App() {
       setOriginalFileContent(fileContent);
       notify(`Saved ${selectedFile}`);
       fetchFiles(true);
+      fetchNeonStatus(); // Refresh sync timestamp
     } catch {
       notify(`Failed to save ${selectedFile}`, 'error');
     }
@@ -344,14 +344,16 @@ export default function App() {
     setLoadingState(true);
     setStateResponse('');
     try {
-      const res = await apiService.stateUpdate(stateInput);
+      const res = await apiService.runState_manager(stateInput);
       setStateResponse(res.response);
+      setStateInput('');
+      notify('State updated successfully.');
       fetchFiles(true);
-      if (selectedFile) loadFile(selectedFile);
-      notify('State Manager updated your knowledge base.');
-      fetchLogs('state');
-    } catch (e) {
-      notify(e.message || 'State Manager error.', 'error');
+      fetchTodayLogCount();
+      fetchLogs('state', true);
+      fetchNeonStatus(); // Refresh sync timestamp
+    } catch (err) {
+      notify(err.message || 'State Manager error.', 'error');
     } finally {
       setLoadingState(false);
     }
@@ -366,6 +368,7 @@ export default function App() {
       setDecisionResponse(res.response);
       notify('Decision Engine generated your plan.');
       fetchLogs('decision');
+      fetchNeonStatus(); // Refresh sync timestamp
     } catch (e) {
       notify(e.message || 'Decision Engine error.', 'error');
     } finally {
@@ -381,6 +384,7 @@ export default function App() {
       setReflectionResponse(res.response);
       notify('Reflection complete.');
       fetchLogs('reflection');
+      fetchNeonStatus(); // Refresh sync timestamp
     } catch (e) {
       notify(e.message || 'Reflection Agent error.', 'error');
     } finally {
@@ -484,6 +488,7 @@ export default function App() {
       const today = new Date().toISOString().split('T')[0];
       if (dayLogDate === today) fetchTodayLogCount();
       dayLogInputRef.current?.focus();
+      fetchNeonStatus(); // Refresh sync timestamp
     } catch (e) {
       notify(e.message || 'Failed to save note.', 'error');
     }
@@ -495,6 +500,7 @@ export default function App() {
       setDayLogs(prev => prev.filter(l => l.id !== id));
       const today = new Date().toISOString().split('T')[0];
       if (dayLogDate === today) fetchTodayLogCount();
+      fetchNeonStatus(); // Refresh sync timestamp
     } catch (e) {
       notify(e.message || 'Failed to delete note.', 'error');
     }
@@ -545,20 +551,6 @@ export default function App() {
       setNeonAvailable(res.available);
       if (res.last_synced_at) setNeonLastSynced(res.last_synced_at);
     } catch (_) {}
-  };
-
-  const triggerNeonPush = async () => {
-    if (loadingNeonPush) return;
-    setLoadingNeonPush(true);
-    try {
-      const res = await apiService.pushToNeon();
-      setNeonLastSynced(res.pushed_at);
-      notify(`Synced to Neon — ${res.markdown_files?.length ?? 0} files, ${res.day_logs ?? 0} day logs.`);
-    } catch (e) {
-      notify(e.message || 'Neon push failed.', 'error');
-    } finally {
-      setLoadingNeonPush(false);
-    }
   };
 
   useEffect(() => {
@@ -679,24 +671,10 @@ export default function App() {
         </nav>
 
         <div className="sidebar-footer">
-          {/* Neon Push Button */}
-          {neonAvailable && (
-            <button
-              className="btn btn-neon"
-              onClick={triggerNeonPush}
-              disabled={loadingNeonPush || !backendConnected}
-              style={{ width: '100%', fontSize: '0.85rem' }}
-              title={neonLastSynced ? `Last synced: ${new Date(neonLastSynced).toLocaleString()}` : 'Never synced'}
-            >
-              {loadingNeonPush
-                ? <RefreshCw size={14} className="loading-spinner" />
-                : <CloudUpload size={14} />}
-              <span>Push to Neon</span>
-            </button>
-          )}
           {neonAvailable && neonLastSynced && (
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '-4px' }}>
-              Synced {new Date(neonLastSynced).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', marginBottom: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <Cloud size={12} color="#10b981" />
+              <span>Auto-Synced to Cloud</span>
             </div>
           )}
           <button
