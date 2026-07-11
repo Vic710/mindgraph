@@ -502,29 +502,58 @@ export default function App() {
   const addDayLogEntry = async () => {
     const note = dayLogInput.trim();
     if (!note) return;
+    
+    // Clear input instantly so user is free to continue typing
+    setDayLogInput('');
+    dayLogInputRef.current?.focus();
+
+    // Create an optimistic entry
+    const tempId = `temp-${Date.now()}`;
+    const optimisticEntry = {
+      id: tempId,
+      note: note,
+      created_at: new Date().toISOString(),
+      isOptimistic: true
+    };
+
+    // Prepend locally immediately
+    setDayLogs(prev => [optimisticEntry, ...prev]);
+    setTodayLogCount(prev => prev + 1);
+
     try {
-      await apiService.addDayLog(note);
-      setDayLogInput('');
-      await fetchDayLogs(dayLogDate);
-      // Update count if we're logging for today
-      const today = new Date().toISOString().split('T')[0];
-      if (dayLogDate === today) fetchTodayLogCount();
-      dayLogInputRef.current?.focus();
-      fetchNeonStatus(); // Refresh sync timestamp
+      const realEntry = await apiService.addDayLog(note);
+      
+      // Replace optimistic entry with the server's database entry
+      setDayLogs(prev => prev.map(item => item.id === tempId ? realEntry : item));
+      
+      // Update count & status quietly in background
+      fetchTodayLogCount();
+      fetchNeonStatus();
     } catch (e) {
-      notify(e.message || 'Failed to save note.', 'error');
+      // Remove optimistic entry if API write fails and restore count
+      setDayLogs(prev => prev.filter(item => item.id !== tempId));
+      setTodayLogCount(prev => Math.max(0, prev - 1));
+      notify(e.message || 'Failed to save note to cloud.', 'error');
     }
   };
 
   const deleteDayLogEntry = async (id) => {
+    // Keep reference of current logs in case we need to rollback
+    const originalLogs = [...dayLogs];
+    
+    // Remove locally immediately
+    setDayLogs(prev => prev.filter(l => l.id !== id));
+    setTodayLogCount(prev => Math.max(0, prev - 1));
+
     try {
       await apiService.deleteDayLog(id);
-      setDayLogs(prev => prev.filter(l => l.id !== id));
+      fetchNeonStatus();
+    } catch (e) {
+      // Rollback to original logs on failure
+      setDayLogs(originalLogs);
       const today = new Date().toISOString().split('T')[0];
       if (dayLogDate === today) fetchTodayLogCount();
-      fetchNeonStatus(); // Refresh sync timestamp
-    } catch (e) {
-      notify(e.message || 'Failed to delete note.', 'error');
+      notify('Failed to delete note from cloud.', 'error');
     }
   };
 
@@ -1019,22 +1048,29 @@ export default function App() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {dayLogs.map(entry => {
-                    const dt = new Date(entry.created_at + 'Z');
+                    const dt = new Date(entry.created_at + (entry.isOptimistic ? '' : 'Z'));
                     const timeStr = dt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
                     return (
                       <div
                         key={entry.id}
                         className="day-log-entry"
+                        style={{ opacity: entry.isOptimistic ? 0.6 : 1 }}
                       >
                         <span className="day-log-time">{timeStr}</span>
                         <span className="day-log-note">{entry.note}</span>
-                        <button
-                          className="day-log-delete"
-                          onClick={() => deleteDayLogEntry(entry.id)}
-                          aria-label="Delete note"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {entry.isOptimistic ? (
+                          <div style={{ padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
+                            <RefreshCw size={12} className="loading-spinner" style={{ color: 'var(--text-muted)' }} />
+                          </div>
+                        ) : (
+                          <button
+                            className="day-log-delete"
+                            onClick={() => deleteDayLogEntry(entry.id)}
+                            aria-label="Delete note"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                       </div>
                     );
                   })}
