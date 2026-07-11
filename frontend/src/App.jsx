@@ -407,10 +407,32 @@ export default function App() {
   };
 
   const switchThread = async (tid) => {
-    // We don't replay messages from SQLite in the frontend (only backend stores them).
-    // Switching a thread just sets the thread_id so next message continues that thread.
     setChatThreadId(tid);
-    setChatMessages([{ role: 'assistant', content: '(Resumed previous conversation — send a message to continue.)' }]);
+    setLoadingChat(true);
+    try {
+      const res = await apiService.getChatHistory(tid);
+      setChatMessages(res.messages || []);
+    } catch (_) {
+      setChatMessages([{ role: 'assistant', content: 'Failed to load conversation history.' }]);
+    } finally {
+      setLoadingChat(false);
+    }
+  };
+
+  const deleteThreadEntry = async (tid, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm("Delete this conversation thread?")) return;
+    try {
+      await apiService.deleteThread(tid);
+      notify('Conversation deleted.');
+      if (tid === chatThreadId) {
+        startNewChat();
+      } else {
+        fetchThreads();
+      }
+    } catch (_) {
+      notify('Failed to delete conversation.', 'error');
+    }
   };
 
   const sendChatMessage = async () => {
@@ -1113,16 +1135,31 @@ export default function App() {
                       <div
                         key={tid}
                         onClick={() => switchThread(tid)}
+                        className="thread-item-container"
                         style={{
-                          padding: '8px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                          padding: '6px 8px 6px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
                           fontSize: '0.8rem', color: tid === chatThreadId ? 'var(--text-primary)' : 'var(--text-muted)',
                           background: tid === chatThreadId ? 'rgba(99,102,241,0.1)' : 'transparent',
                           border: tid === chatThreadId ? '1px solid rgba(99,102,241,0.25)' : '1px solid transparent',
-                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                           transition: 'all 0.15s ease'
                         }}
                       >
-                        {tid.slice(0, 8)}...
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }}>
+                          {tid.slice(0, 8)}...
+                        </span>
+                        <button
+                          onClick={(e) => deleteThreadEntry(tid, e)}
+                          className="thread-delete-btn"
+                          aria-label="Delete chat"
+                          style={{
+                            background: 'none', border: 'none', padding: '4px',
+                            color: 'var(--text-muted)', cursor: 'pointer', display: 'flex',
+                            alignItems: 'center', borderRadius: '4px', transition: 'all 0.15s'
+                          }}
+                        >
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                     ))
                   }

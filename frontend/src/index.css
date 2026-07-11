@@ -1130,3 +1130,17 @@ body {
   line-height: 1.5;
   margin-bottom: 32px;
 }
+
+.thread-delete-btn {
+  opacity: 0.3;
+  transition: opacity 0.2s ease;
+}
+
+.thread-item-container:hover .thread-delete-btn {
+  opacity: 1;
+}
+
+.thread-delete-btn:hover {
+  color: #ef4444 !important;
+  background-color: rgba(239, 68, 68, 0.1) !important;
+}

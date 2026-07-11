@@ -184,11 +184,13 @@ def list_thread_ids() -> list[str]:
     if _use_postgres and _pg_pool:
         try:
             with _pg_pool.connection() as conn:
+                # In PostgresSaver, timestamp is stored inside the JSONB 'checkpoint' column.
                 rows = conn.execute(
-                    "SELECT DISTINCT thread_id FROM checkpoints ORDER BY thread_ts DESC"
+                    "SELECT thread_id FROM checkpoints GROUP BY thread_id ORDER BY max(checkpoint->>'ts') DESC"
                 ).fetchall()
                 return [r["thread_id"] for r in rows]
-        except Exception:
+        except Exception as e:
+            print(f"[Chat] Failed to list Postgres thread IDs: {e}")
             return []
     elif _sqlite_conn:
         try:
@@ -207,6 +209,8 @@ def delete_thread_by_id(thread_id: str) -> None:
         with _pg_pool.connection() as conn:
             conn.execute("DELETE FROM checkpoints WHERE thread_id = %s", (thread_id,))
             conn.execute("DELETE FROM checkpoint_writes WHERE thread_id = %s", (thread_id,))
+            conn.execute("DELETE FROM checkpoint_blobs WHERE thread_id = %s", (thread_id,))
     elif _sqlite_conn:
         _sqlite_conn.execute("DELETE FROM checkpoints WHERE thread_id = ?", (thread_id,))
+        _sqlite_conn.execute("DELETE FROM writes WHERE thread_id = ?", (thread_id,))
         _sqlite_conn.commit()

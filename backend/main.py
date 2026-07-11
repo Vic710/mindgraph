@@ -324,6 +324,32 @@ def list_threads():
     except Exception:
         return {"threads": []}
 
+@app.get("/api/chat/{thread_id}/history")
+def get_chat_history(thread_id: str):
+    """Retrieve message history for a given conversation thread."""
+    try:
+        config = {"configurable": {"thread_id": thread_id}}
+        state = chat_graph.get_state(config)
+        messages = []
+        if state and "messages" in state.values:
+            for msg in state.values["messages"]:
+                role = "user" if msg.type == "human" else "assistant"
+                content = get_message_text(msg)
+                
+                # Filter out context injection messages
+                if content.startswith("[CONTEXT LOAD]"):
+                    continue
+                if content == "Got it. I've read through your context — goals, current state, decisions, and principles. I'm ready. What's on your mind?":
+                    continue
+                
+                messages.append({
+                    "role": role,
+                    "content": content
+                })
+        return {"messages": messages}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.delete("/api/chat/{thread_id}")
 def delete_thread(thread_id: str):
     """Delete all messages for a given conversation thread."""
