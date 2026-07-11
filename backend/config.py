@@ -24,6 +24,9 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL:
     DATABASE_URL = DATABASE_URL.strip("'\"")  # postgresql://user:pass@host/db?sslmode=require
 
+API_SECRET_TOKEN = os.getenv("API_SECRET_TOKEN")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*")
+
 # Check and validate
 if not GEMINI_API_KEY:
     print("WARNING: GEMINI_API_KEY not found in environment variables. Please check your .env file.")

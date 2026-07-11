@@ -1,8 +1,17 @@
 const API_BASE_URL = 'http://127.0.0.1:8000';
+const API_SECRET_TOKEN = import.meta.env.VITE_API_SECRET_TOKEN || '';
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
-  const headers = { 'Content-Type': 'application/json', ...options.headers };
+  const headers = { 
+    'Content-Type': 'application/json', 
+    ...options.headers 
+  };
+  
+  if (API_SECRET_TOKEN) {
+    headers['X-MindGraph-Token'] = API_SECRET_TOKEN;
+  }
+
   const response = await fetch(url, { ...options, headers });
 
   if (!response.ok) {

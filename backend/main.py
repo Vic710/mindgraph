@@ -1,11 +1,11 @@
 import datetime
 import shutil
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_core.messages import HumanMessage
 
-from backend.config import LIFE_DIR, SNAPSHOTS_DIR
+from backend.config import LIFE_DIR, SNAPSHOTS_DIR, API_SECRET_TOKEN, ALLOWED_ORIGINS
 from backend.agents.state_manager import state_manager_graph
 from backend.agents.decision_engine import decision_engine_graph
 from backend.agents.reflection_agent import reflection_agent_graph
@@ -13,11 +13,22 @@ from backend.agents.chat_agent import chat_graph, list_thread_ids, delete_thread
 from backend.agents.logger import log_response, get_logs, delete_log, add_day_log, get_day_logs, delete_day_log
 from backend.neon import pull_from_neon, push_to_neon, get_last_synced_at, is_neon_available
 
-app = FastAPI(title="Productivity Agent API")
+def verify_api_token(x_mindgraph_token: str = Header(None)):
+    """Global dependency to check for the custom API key header if set in config."""
+    if API_SECRET_TOKEN and x_mindgraph_token != API_SECRET_TOKEN:
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid or missing token")
+
+app = FastAPI(
+    title="Productivity Agent API",
+    dependencies=[Depends(verify_api_token)]
+)
+
+# Parse origins list
+origins = [origin.strip() for origin in ALLOWED_ORIGINS.split(",") if origin.strip()]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
