@@ -1,5 +1,4 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
-const API_SECRET_TOKEN = import.meta.env.VITE_API_SECRET_TOKEN || '';
 
 async function request(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -8,8 +7,9 @@ async function request(endpoint, options = {}) {
     ...options.headers 
   };
   
-  if (API_SECRET_TOKEN) {
-    headers['X-MindGraph-Token'] = API_SECRET_TOKEN;
+  const token = localStorage.getItem('mg_auth_token') || '';
+  if (token) {
+    headers['X-MindGraph-Token'] = token;
   }
 
   const response = await fetch(url, { ...options, headers });

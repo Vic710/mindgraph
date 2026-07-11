@@ -226,6 +226,11 @@ export default function App() {
   const [notification, setNotification] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('mg_auth_token'));
+  const [loginPassword, setLoginPassword] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+
   // Files
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -505,6 +510,34 @@ export default function App() {
 
   const isToday = dayLogDate === new Date().toISOString().split('T')[0];
 
+  // --- Authentication ---
+  const handleLogin = async (e) => {
+    if (e) e.preventDefault();
+    if (!loginPassword.trim()) return;
+    setIsLoggingIn(true);
+    try {
+      localStorage.setItem('mg_auth_token', loginPassword.trim());
+      // Test the password by calling status API
+      const res = await apiService.getNeonStatus();
+      setNeonAvailable(res.available);
+      if (res.last_synced_at) setNeonLastSynced(res.last_synced_at);
+      setIsAuthenticated(true);
+      notify('Welcome back, Shlok!');
+    } catch (err) {
+      localStorage.removeItem('mg_auth_token');
+      notify('Incorrect password. Please try again.', 'error');
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('mg_auth_token');
+    setIsAuthenticated(false);
+    setLoginPassword('');
+    notify('Workspace locked.');
+  };
+
   // --- Neon Sync ---
   const fetchNeonStatus = async () => {
     try {
@@ -528,7 +561,15 @@ export default function App() {
     }
   };
 
-  useEffect(() => { fetchFiles(); fetchThreads(); fetchLogs('state'); fetchTodayLogCount(); fetchNeonStatus(); }, []);
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchFiles();
+      fetchThreads();
+      fetchLogs('state');
+      fetchTodayLogCount();
+      fetchNeonStatus();
+    }
+  }, [isAuthenticated]);
 
   // ---------------------------------------------------------------- //
   // Render
@@ -541,6 +582,55 @@ export default function App() {
     { id: 'chat',       label: 'Chat',              icon: MessageSquare },
     { id: 'files',      label: 'File Explorer',     icon: FileText },
   ];
+
+  if (!isAuthenticated) {
+    return (
+      <div className="login-container">
+        <div className="login-card">
+          <div className="login-logo">
+            <Brain size={32} color="var(--accent-primary)" />
+          </div>
+          <h1 className="login-title">MindGraph</h1>
+          <p className="login-subtitle">Welcome back, Shlok. Enter password to unlock your workspace.</p>
+          <form onSubmit={handleLogin} style={{ width: '100%' }}>
+            <input
+              type="password"
+              className="text-input"
+              value={loginPassword}
+              onChange={e => setLoginPassword(e.target.value)}
+              placeholder="Enter password..."
+              disabled={isLoggingIn}
+              autoFocus
+              style={{ marginBottom: '16px', textAlign: 'center', letterSpacing: loginPassword ? '0.2em' : 'normal' }}
+            />
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={isLoggingIn || !loginPassword.trim()}
+              style={{ width: '100%', minHeight: '44px' }}
+            >
+              {isLoggingIn ? <RefreshCw size={16} className="loading-spinner" /> : <span>Unlock Workspace</span>}
+            </button>
+          </form>
+          {notification && (
+            <div style={{
+              marginTop: '16px',
+              padding: '10px 14px',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.85rem',
+              background: notification.type === 'error' ? 'var(--danger-bg)' : 'var(--success-bg)',
+              color: notification.type === 'error' ? 'var(--danger)' : 'var(--success)',
+              border: `1px solid ${notification.type === 'error' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+              width: '100%',
+              textAlign: 'center'
+            }}>
+              {notification.text}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-container">
@@ -650,6 +740,14 @@ export default function App() {
               <Clock size={14} />
               <span className="date-display">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
             </div>
+            <button
+              onClick={handleLogout}
+              className="btn btn-secondary"
+              style={{ padding: '6px 12px', minHeight: '32px', fontSize: '0.8rem' }}
+              title="Lock Workspace"
+            >
+              Lock
+            </button>
             {notification && (
               <div style={{
                 padding: '6px 16px', borderRadius: '20px', fontSize: '0.85rem',
