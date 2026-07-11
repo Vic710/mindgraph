@@ -286,8 +286,9 @@ def get_pg_pool():
         pool = ConnectionPool(
             conninfo=DATABASE_URL,
             kwargs={"autocommit": True, "row_factory": dict_row},
-            min_size=1,
+            min_size=0,           # Let the pool scale to 0 when idle
             max_size=5,
+            max_idle=30.0,        # Recycle connections idle for more than 30 seconds
             open=True,
         )
         return pool
