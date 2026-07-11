@@ -231,6 +231,9 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  // Custom Confirmation Modal State
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+
   // Files
   const [files, setFiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -419,20 +422,26 @@ export default function App() {
     }
   };
 
-  const deleteThreadEntry = async (tid, e) => {
+  const deleteThreadEntry = (tid, e) => {
     if (e) e.stopPropagation();
-    if (!window.confirm("Delete this conversation thread?")) return;
-    try {
-      await apiService.deleteThread(tid);
-      notify('Conversation deleted.');
-      if (tid === chatThreadId) {
-        startNewChat();
-      } else {
-        fetchThreads();
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Chat History',
+      message: 'Are you sure you want to permanently delete this conversation thread? This action cannot be undone.',
+      onConfirm: async () => {
+        try {
+          await apiService.deleteThread(tid);
+          notify('Conversation deleted.');
+          if (tid === chatThreadId) {
+            startNewChat();
+          } else {
+            fetchThreads();
+          }
+        } catch (_) {
+          notify('Failed to delete conversation.', 'error');
+        }
       }
-    } catch (_) {
-      notify('Failed to delete conversation.', 'error');
-    }
+    });
   };
 
   const sendChatMessage = async () => {
@@ -1284,7 +1293,32 @@ export default function App() {
           )}
 
         </main>
-      </div>
+      {/* Custom Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <h3 className="modal-title">{confirmModal.title}</h3>
+            <p className="modal-message">{confirmModal.message}</p>
+            <div className="modal-actions">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null })}
+              >
+                Cancel
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => {
+                  if (confirmModal.onConfirm) confirmModal.onConfirm();
+                  setConfirmModal({ isOpen: false, title: '', message: '', onConfirm: null });
+                }}
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
