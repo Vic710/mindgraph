@@ -238,8 +238,11 @@ def remove_day_log(log_id: int):
 def write_today_plan(content: str):
     """Save the decision plan to 9_today_plan.md so chat agent can read it."""
     try:
+        import datetime
+        date_str = datetime.date.today().strftime("%B %d, %Y")
+        headed = f"# Today's Plan — {date_str}\n\n{content}"
         filepath = LIFE_DIR / "9_today_plan.md"
-        filepath.write_text(content, encoding="utf-8")
+        filepath.write_text(headed, encoding="utf-8")
     except Exception as e:
         print(f"[ERROR] Failed to write 9_today_plan.md: {e}")
 
