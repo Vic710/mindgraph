@@ -180,7 +180,8 @@ if not _use_postgres:
 # Thread list/delete helpers (called from main.py)
 # ------------------------------------------------------------------ #
 def list_thread_ids() -> list[str]:
-    """Return all distinct chat thread IDs, newest first."""
+    """Return all distinct chat thread IDs, newest first, excluding state/decision sessions."""
+    raw_threads = []
     if _use_postgres and _pg_pool:
         try:
             with _pg_pool.connection() as conn:
@@ -188,7 +189,7 @@ def list_thread_ids() -> list[str]:
                 rows = conn.execute(
                     "SELECT thread_id FROM checkpoints GROUP BY thread_id ORDER BY max(checkpoint->>'ts') DESC"
                 ).fetchall()
-                return [r["thread_id"] for r in rows]
+                raw_threads = [r["thread_id"] for r in rows]
         except Exception as e:
             print(f"[Chat] Failed to list Postgres thread IDs: {e}")
             return []
@@ -197,10 +198,12 @@ def list_thread_ids() -> list[str]:
             cursor = _sqlite_conn.execute(
                 "SELECT DISTINCT thread_id FROM checkpoints ORDER BY thread_ts DESC"
             )
-            return [row[0] for row in cursor.fetchall()]
+            raw_threads = [row[0] for row in cursor.fetchall()]
         except Exception:
             return []
-    return []
+            
+    # Filter out state- and decision- prefixed threads
+    return [tid for tid in raw_threads if not (tid.startswith("state-") or tid.startswith("decision-"))]
 
 
 def delete_thread_by_id(thread_id: str) -> None:

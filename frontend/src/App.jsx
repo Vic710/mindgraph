@@ -49,8 +49,8 @@ export default function App() {
   // State Manager conversational session
   const [stateManagerThreadId, setStateManagerThreadId] = useState(() => {
     let tid = localStorage.getItem('mg_state_thread_id');
-    if (!tid) {
-      tid = crypto.randomUUID();
+    if (!tid || !tid.startsWith('state-')) {
+      tid = `state-${crypto.randomUUID()}`;
       localStorage.setItem('mg_state_thread_id', tid);
     }
     return tid;
@@ -66,8 +66,8 @@ export default function App() {
   // Decision Engine conversational session
   const [decisionEngineThreadId, setDecisionEngineThreadId] = useState(() => {
     let tid = localStorage.getItem('mg_decision_thread_id');
-    if (!tid) {
-      tid = crypto.randomUUID();
+    if (!tid || !tid.startsWith('decision-')) {
+      tid = `decision-${crypto.randomUUID()}`;
       localStorage.setItem('mg_decision_thread_id', tid);
     }
     return tid;
@@ -312,7 +312,7 @@ export default function App() {
       title: 'Lock State Manager Session',
       message: 'Are you sure you want to lock and conclude today\'s state manager session? This will finalize all edits.',
       onConfirm: () => {
-        const nextId = crypto.randomUUID();
+        const nextId = `state-${crypto.randomUUID()}`;
         localStorage.setItem('mg_state_thread_id', nextId);
         setStateManagerThreadId(nextId);
         setStateManagerMessages([]);
@@ -328,7 +328,7 @@ export default function App() {
       title: 'Lock Decision Engine Session',
       message: 'Are you sure you want to conclude and lock this decision plan? This concludes today\'s plan generation.',
       onConfirm: () => {
-        const nextId = crypto.randomUUID();
+        const nextId = `decision-${crypto.randomUUID()}`;
         localStorage.setItem('mg_decision_thread_id', nextId);
         setDecisionEngineThreadId(nextId);
         setDecisionEngineMessages([]);

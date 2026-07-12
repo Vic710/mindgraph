@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Calendar, RefreshCw, Lock, Send } from 'lucide-react';
-import { AgentResponsePanel, parseMarkdownToHtml } from './Markdown';
+import { AgentResponsePanel, MarkdownContent } from './Markdown';
 import { HistoryPanel } from './HistoryPanel';
 
 export function DecisionEngine({
@@ -127,7 +127,7 @@ export function DecisionEngine({
                   lineHeight: 1.5,
                 }}>
                   {msg.role === 'assistant' ? (
-                    <div className="markdown-body" dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(msg.content) }} />
+                    <MarkdownContent content={msg.content} className="markdown-body" />
                   ) : (
                     msg.content
                   )}

@@ -56,3 +56,18 @@ Interview-ready.
 
 **Goal**
 Implementation paper aligned with AI/ML research.
+
+---
+
+## Internship Placement Prep
+
+**Status:** In Progress
+
+**Goal**
+Secure full-time placement (PhonePe/PPO).
+
+**Next**
+* DSA revision.
+* System Design study.
+* Resume polishing.
+* PhonePe-specific prep.

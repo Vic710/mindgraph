@@ -389,6 +389,13 @@ def get_state_history(thread_id: str):
         messages = []
         if state and "messages" in state.values:
             for msg in state.values["messages"]:
+                # Filter out ToolMessages
+                if msg.type == "tool":
+                    continue
+                # Filter out AIMessages that contain tool calls or have empty content
+                if msg.type == "ai" and (getattr(msg, "tool_calls", None) or not get_message_text(msg).strip()):
+                    continue
+
                 role = "user" if msg.type == "human" else "assistant"
                 content = get_message_text(msg)
                 
@@ -417,6 +424,13 @@ def get_decision_history(thread_id: str):
         messages = []
         if state and "messages" in state.values:
             for msg in state.values["messages"]:
+                # Filter out ToolMessages
+                if msg.type == "tool":
+                    continue
+                # Filter out AIMessages that contain tool calls or have empty content
+                if msg.type == "ai" and (getattr(msg, "tool_calls", None) or not get_message_text(msg).strip()):
+                    continue
+
                 role = "user" if msg.type == "human" else "assistant"
                 content = get_message_text(msg)
                 

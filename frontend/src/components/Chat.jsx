@@ -1,6 +1,6 @@
 import React from 'react';
 import { Plus, Trash2, MessageSquare, Send } from 'lucide-react';
-import { parseMarkdownToHtml } from './Markdown';
+import { MarkdownContent } from './Markdown';
 
 export function Chat({
   threads,
@@ -101,7 +101,7 @@ export function Chat({
                 wordBreak: 'break-word',
               }}>
                 {msg.role === 'assistant' ? (
-                  <div className="markdown-body" dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(msg.content) }} />
+                  <MarkdownContent content={msg.content} className="markdown-body" />
                 ) : (
                   msg.content
                 )}

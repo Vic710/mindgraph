@@ -1,6 +1,6 @@
 import React from 'react';
 import { RefreshCw, Trash2 } from 'lucide-react';
-import { parseMarkdownToHtml } from './Markdown';
+import { MarkdownContent } from './Markdown';
 import { parseDateSafe } from './utils';
 
 export function HistoryPanel({ logs, loading, expandedId, onExpand, agentLabel, onDelete }) {
@@ -62,11 +62,9 @@ export function HistoryPanel({ logs, loading, expandedId, onExpand, agentLabel, 
             </div>
             {/* Expanded response */}
             {isOpen && (
-              <div
-                style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border-color)' }}
-                className="markdown-body"
-                dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(log.response) }}
-              />
+              <div style={{ padding: '0 14px 14px', borderTop: '1px solid var(--border-color)' }}>
+                <MarkdownContent content={log.response} className="markdown-body" />
+              </div>
             )}
           </div>
         );
