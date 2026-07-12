@@ -481,10 +481,22 @@ body {
 
 .editor-panes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 16px;
   flex-grow: 1;
   min-height: 0; /* Important for flex child scroll */
+}
+
+.editor-panes.show-edit {
+  grid-template-columns: 1fr 1fr;
+}
+
+.editor-panes.show-preview {
+  grid-template-columns: 1fr;
+}
+
+.mobile-back-btn,
+.mobile-editor-tabs {
+  display: none !important;
 }
 
 .editor-textarea {
@@ -960,42 +972,117 @@ body {
     grid-column: 1;
   }
 
-  /* File explorer — stack vertically */
+  /* File explorer — responsive Master-Detail layout */
   .file-explorer {
     grid-template-columns: 1fr;
-    height: auto;
-    gap: 14px;
+    height: calc(100dvh - 56px - 64px - 16px); /* height accounting for header and margins */
+    gap: 0;
+  }
+
+  .file-explorer.show-list .file-list {
+    display: flex !important;
+  }
+  .file-explorer.show-list .file-editor-container {
+    display: none !important;
+  }
+
+  .file-explorer.show-editor .file-list {
+    display: none !important;
+  }
+  .file-explorer.show-editor .file-editor-container {
+    display: flex !important;
   }
 
   .file-list {
-    max-height: 180px;
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 10px;
+    max-height: none !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 8px;
+    overflow-y: auto !important;
+    padding: 12px 6px;
+    width: 100% !important;
+    height: 100% !important;
   }
 
   .file-item {
-    white-space: nowrap;
+    white-space: normal;
     flex-shrink: 0;
-    padding: 8px 12px;
-    font-size: 0.82rem;
+    padding: 10px 14px;
+    font-size: 0.9rem;
   }
 
   .file-editor-container {
-    height: calc(100dvh - 56px - 28px - 200px);
-    min-height: 300px;
+    height: 100% !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .mobile-back-btn {
+    display: flex !important;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .desktop-edit-toggle {
+    display: none !important;
+  }
+
+  .mobile-editor-tabs {
+    display: flex !important;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 4px;
+  }
+
+  .mobile-tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 10px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+  }
+
+  .mobile-tab-btn.active {
+    color: var(--accent-primary);
+    border-bottom-color: var(--accent-primary);
+    font-weight: 600;
+    background-color: rgba(99, 102, 241, 0.05);
   }
 
   .editor-panes {
-    grid-template-columns: 1fr;
+    flex-grow: 1;
+    min-height: 0;
+    display: flex !important;
+    flex-direction: column;
+  }
+
+  .editor-panes.show-edit .editor-textarea {
+    display: block !important;
+    height: 100% !important;
+    flex-grow: 1;
+  }
+
+  .editor-panes.show-edit .markdown-preview {
+    display: none !important;
+  }
+
+  .editor-panes.show-preview .markdown-preview {
+    display: block !important;
+    height: 100% !important;
+    flex-grow: 1;
   }
 
   .editor-textarea,
   .markdown-preview {
-    min-height: 280px;
+    height: 100% !important;
+    min-height: 0 !important;
+    flex-grow: 1;
   }
 
   /* Chat layout — single column, thread list foldable */

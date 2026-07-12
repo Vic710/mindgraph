@@ -272,6 +272,7 @@ export default function App() {
   const [isEditing, setIsEditing] = useState(false);
   const [loadingFiles, setLoadingFiles] = useState(false);
   const [loadingSnapshot, setLoadingSnapshot] = useState(false);
+  const [mobileFileView, setMobileFileView] = useState('list'); // 'list' | 'editor'
 
   // Agent shared state
   const [stateInput, setStateInput] = useState('');
@@ -353,7 +354,7 @@ export default function App() {
       const data = await apiService.getFiles();
       setFiles(data);
       setBackendConnected(true);
-      if (data.length > 0 && !selectedFile) loadFile(data[0].name);
+      if (data.length > 0 && !selectedFile) loadFile(data[0].name, true);
     } catch {
       setBackendConnected(false);
       if (!silent) notify('Cannot reach backend API.', 'error');
@@ -362,13 +363,16 @@ export default function App() {
     }
   };
 
-  const loadFile = async (name) => {
+  const loadFile = async (name, isInitialLoad = false) => {
     try {
       const data = await apiService.getFile(name);
       setSelectedFile(name);
       setFileContent(data.content);
       setOriginalFileContent(data.content);
       setIsEditing(false);
+      if (!isInitialLoad) {
+        setMobileFileView('editor');
+      }
     } catch {
       notify(`Failed to load ${name}`, 'error');
     }
@@ -1191,7 +1195,7 @@ export default function App() {
 
           {/* ===== FILE EXPLORER ===== */}
           {activeTab === 'files' && (
-            <div className="file-explorer">
+            <div className={`file-explorer ${mobileFileView === 'list' ? 'show-list' : 'show-editor'}`}>
               <div className="file-list">
                 <div style={{ padding: '0 8px', fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase', marginBottom: '10px' }}>
                   Knowledge Base
@@ -1215,12 +1219,22 @@ export default function App() {
                 {selectedFile ? (
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                      <div>
-                        <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>{selectedFile}</h2>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Manual edit</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <button
+                          className="btn btn-secondary mobile-back-btn"
+                          onClick={() => setMobileFileView('list')}
+                          style={{ padding: '6px 8px', minHeight: '32px' }}
+                        >
+                          <ChevronLeft size={16} />
+                          <span>Files</span>
+                        </button>
+                        <div>
+                          <h2 style={{ fontSize: '1rem', fontWeight: 600 }}>{selectedFile}</h2>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Manual edit</span>
+                        </div>
                       </div>
                       <div style={{ display: 'flex', gap: '12px' }}>
-                        <button className="btn btn-secondary" onClick={() => setIsEditing(!isEditing)}>
+                        <button className="btn btn-secondary desktop-edit-toggle" onClick={() => setIsEditing(!isEditing)}>
                           {isEditing ? <Eye size={15} /> : <Code size={15} />}
                           <span>{isEditing ? 'Preview' : 'Edit'}</span>
                         </button>
@@ -1235,7 +1249,22 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="editor-panes" style={{ gridTemplateColumns: isEditing ? '1fr' : '1fr 1fr' }}>
+                    <div className="mobile-editor-tabs">
+                      <button
+                        className={`mobile-tab-btn ${!isEditing ? 'active' : ''}`}
+                        onClick={() => setIsEditing(false)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className={`mobile-tab-btn ${isEditing ? 'active' : ''}`}
+                        onClick={() => setIsEditing(true)}
+                      >
+                        Preview
+                      </button>
+                    </div>
+
+                    <div className={`editor-panes ${isEditing ? 'show-preview' : 'show-edit'}`}>
                       {!isEditing && (
                         <textarea
                           className="editor-textarea"
@@ -1246,7 +1275,6 @@ export default function App() {
                       )}
                       <div
                         className="markdown-preview markdown-body"
-                        style={{ gridColumn: isEditing ? 'span 2' : 'span 1' }}
                         dangerouslySetInnerHTML={{ __html: parseMarkdownToHtml(fileContent) }}
                       />
                     </div>
