@@ -21,7 +21,8 @@ export function DecisionEngine({
   setDecisionChatInput,
   sendDecisionChatMessage,
   loadingDecisionChat,
-  lockDecisionSession
+  lockDecisionSession,
+  onDeleteLog
 }) {
   const chatEndRef = useRef(null);
   const isSessionActive = decisionEngineMessages && decisionEngineMessages.length > 0;
@@ -181,6 +182,7 @@ export function DecisionEngine({
             expandedId={expandedLogId}
             onExpand={setExpandedLogId}
             agentLabel="Decision Engine"
+            onDelete={onDeleteLog}
           />
         </div>
       </div>

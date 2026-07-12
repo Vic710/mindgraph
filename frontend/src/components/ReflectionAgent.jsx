@@ -14,7 +14,8 @@ export function ReflectionAgent({
   expandedLogId,
   setExpandedLogId,
   isSunday,
-  backendConnected
+  backendConnected,
+  onDeleteLog
 }) {
   return (
     <div className="grid-3">
@@ -82,6 +83,7 @@ export function ReflectionAgent({
             expandedId={expandedLogId}
             onExpand={setExpandedLogId}
             agentLabel="Reflection"
+            onDelete={onDeleteLog}
           />
         </div>
       </div>

@@ -338,6 +338,23 @@ export default function App() {
     });
   };
 
+  const deleteAgentLog = (id, agentKey) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Past Response',
+      message: 'Are you sure you want to permanently delete this past response from your history?',
+      onConfirm: async () => {
+        try {
+          await apiService.deleteLog(id);
+          notify('Response deleted.');
+          fetchLogs(agentKey, true);
+        } catch (_) {
+          notify('Failed to delete response.', 'error');
+        }
+      }
+    });
+  };
+
   const submitReflection = async () => {
     setLoadingReflection(true);
     setReflectionResponse('');
@@ -700,6 +717,7 @@ export default function App() {
               sendStateChatMessage={sendStateChatMessage}
               loadingStateChat={loadingStateChat}
               lockStateSession={lockStateSession}
+              onDeleteLog={(id) => deleteAgentLog(id, 'state')}
             />
           )}
 
@@ -721,6 +739,7 @@ export default function App() {
               sendDecisionChatMessage={sendDecisionChatMessage}
               loadingDecisionChat={loadingDecisionChat}
               lockDecisionSession={lockDecisionSession}
+              onDeleteLog={(id) => deleteAgentLog(id, 'decision')}
             />
           )}
 
@@ -737,6 +756,7 @@ export default function App() {
               setExpandedLogId={setExpandedLogId}
               isSunday={isSunday}
               backendConnected={backendConnected}
+              onDeleteLog={(id) => deleteAgentLog(id, 'reflection')}
             />
           )}
 

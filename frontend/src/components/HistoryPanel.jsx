@@ -1,9 +1,9 @@
 import React from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Trash2 } from 'lucide-react';
 import { parseMarkdownToHtml } from './Markdown';
 import { parseDateSafe } from './utils';
 
-export function HistoryPanel({ logs, loading, expandedId, onExpand, agentLabel }) {
+export function HistoryPanel({ logs, loading, expandedId, onExpand, agentLabel, onDelete }) {
   if (loading) return (
     <div style={{ display: 'flex', justifyContent: 'center', padding: '24px' }}>
       <RefreshCw size={16} className="loading-spinner" style={{ color: 'var(--text-muted)' }} />
@@ -30,17 +30,35 @@ export function HistoryPanel({ logs, loading, expandedId, onExpand, agentLabel }
           >
             {/* Header row — always visible */}
             <div
-              onClick={() => onExpand(isOpen ? null : log.id)}
               style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '10px 14px', cursor: 'pointer', gap: '12px',
+                padding: '10px 14px', gap: '12px',
               }}
             >
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {log.input.slice(0, 80)}{log.input.length > 80 ? '…' : ''}
-              </span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>{date}</span>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', flexShrink: 0, transition: 'transform 0.15s', transform: isOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+              <div
+                onClick={() => onExpand(isOpen ? null : log.id)}
+                style={{ flex: 1, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', minWidth: 0 }}
+              >
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {log.input.slice(0, 80)}{log.input.length > 80 ? '…' : ''}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flexShrink: 0 }}>{date}</span>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', flexShrink: 0, transition: 'transform 0.15s', transform: isOpen ? 'rotate(180deg)' : 'none' }}>▾</span>
+              </div>
+              {onDelete && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(log.id); }}
+                  style={{
+                    background: 'none', border: 'none', padding: '4px',
+                    color: 'var(--text-muted)', cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', borderRadius: '4px', transition: 'color 0.15s'
+                  }}
+                  className="log-delete-btn"
+                  title="Delete log entry"
+                >
+                  <Trash2 size={12} />
+                </button>
+              )}
             </div>
             {/* Expanded response */}
             {isOpen && (

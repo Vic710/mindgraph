@@ -22,7 +22,8 @@ export function StateManager({
   setStateChatInput,
   sendStateChatMessage,
   loadingStateChat,
-  lockStateSession
+  lockStateSession,
+  onDeleteLog
 }) {
   const chatEndRef = useRef(null);
   const isSessionActive = stateManagerMessages && stateManagerMessages.length > 0;
@@ -188,6 +189,7 @@ export function StateManager({
             expandedId={expandedLogId}
             onExpand={setExpandedLogId}
             agentLabel="State Manager"
+            onDelete={onDeleteLog}
           />
         </div>
       </div>
