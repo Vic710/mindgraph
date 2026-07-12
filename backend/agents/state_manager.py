@@ -81,8 +81,10 @@ When files need updating, call the `markdown_editor` tool once per file.
 Only update files that actually changed.
 If no files need updating, say so clearly.
 
-When updating files:
-- Preserve formatting.
+## How to behave
+- Be highly concise and direct in your conversation. Do not yap, over-explain, or use unnecessary analogies/fluff.
+- Just state what files you updated, what actions you took, or what clarifying questions you have clearly and directly.
+- Preserve formatting when updating files.
 - Return complete updated files, not patches.
 - Avoid unnecessary wording changes.
 - Never invent information.
@@ -144,7 +146,7 @@ tool_node = ToolNode(TOOLS)
 # -------------------------------------------------------------------
 # Graph
 # -------------------------------------------------------------------
-def build_state_manager_graph():
+def build_state_manager_graph(checkpointer=None):
     workflow = StateGraph(StateManagerState)
 
     workflow.add_node("agent", agent_node)
@@ -157,6 +159,7 @@ def build_state_manager_graph():
     workflow.add_conditional_edges("agent", tools_condition)
     workflow.add_edge("tools", "agent")
 
-    return workflow.compile()
+    return workflow.compile(checkpointer=checkpointer)
 
-state_manager_graph = build_state_manager_graph()
+from backend.agents.chat_agent import chat_checkpointer
+state_manager_graph = build_state_manager_graph(chat_checkpointer)

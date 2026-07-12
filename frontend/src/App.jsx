@@ -46,9 +46,35 @@ export default function App() {
   const [stateResponse, setStateResponse] = useState('');
   const [loadingState, setLoadingState] = useState(false);
 
+  // State Manager conversational session
+  const [stateManagerThreadId, setStateManagerThreadId] = useState(() => {
+    let tid = localStorage.getItem('mg_state_thread_id');
+    if (!tid) {
+      tid = crypto.randomUUID();
+      localStorage.setItem('mg_state_thread_id', tid);
+    }
+    return tid;
+  });
+  const [stateManagerMessages, setStateManagerMessages] = useState([]);
+  const [stateChatInput, setStateChatInput] = useState('');
+  const [loadingStateChat, setLoadingStateChat] = useState(false);
+
   const [decisionInput, setDecisionInput] = useState('');
   const [decisionResponse, setDecisionResponse] = useState('');
   const [loadingDecision, setLoadingDecision] = useState(false);
+
+  // Decision Engine conversational session
+  const [decisionEngineThreadId, setDecisionEngineThreadId] = useState(() => {
+    let tid = localStorage.getItem('mg_decision_thread_id');
+    if (!tid) {
+      tid = crypto.randomUUID();
+      localStorage.setItem('mg_decision_thread_id', tid);
+    }
+    return tid;
+  });
+  const [decisionEngineMessages, setDecisionEngineMessages] = useState([]);
+  const [decisionChatInput, setDecisionChatInput] = useState('');
+  const [loadingDecisionChat, setLoadingDecisionChat] = useState(false);
 
   const [reflectionResponse, setReflectionResponse] = useState('');
   const [reflectionInput, setReflectionInput] = useState('');
@@ -177,7 +203,7 @@ export default function App() {
     setLoadingState(true);
     setStateResponse('');
     try {
-      const res = await apiService.stateUpdate(stateInput, getLocalDateString());
+      const res = await apiService.stateUpdate(stateInput, getLocalDateString(), stateManagerThreadId);
       setStateResponse(res.response);
       setStateInput('');
       notify('State updated successfully.');
@@ -185,6 +211,7 @@ export default function App() {
       fetchTodayLogCount();
       fetchLogs('state', true);
       fetchNeonStatus(); // Refresh sync timestamp
+      fetchStateHistory(stateManagerThreadId);
     } catch (err) {
       notify(err.message || 'State Manager error.', 'error');
     } finally {
@@ -197,16 +224,118 @@ export default function App() {
     setLoadingDecision(true);
     setDecisionResponse('');
     try {
-      const res = await apiService.decisionGenerate(decisionInput);
+      const res = await apiService.decisionGenerate(decisionInput, decisionEngineThreadId);
       setDecisionResponse(res.response);
       notify('Decision Engine generated your plan.');
       fetchLogs('decision');
       fetchNeonStatus(); // Refresh sync timestamp
+      fetchDecisionHistory(decisionEngineThreadId);
     } catch (e) {
       notify(e.message || 'Decision Engine error.', 'error');
     } finally {
       setLoadingDecision(false);
     }
+  };
+
+  const fetchStateHistory = async (tid) => {
+    try {
+      const res = await apiService.getStateHistory(tid);
+      setStateManagerMessages(res.messages || []);
+      // Pre-set stateResponse if there is an active session
+      if (res.messages && res.messages.length > 0) {
+        // The last assistant message is the current active response
+        const lastAssistant = [...res.messages].reverse().find(m => m.role === 'assistant');
+        if (lastAssistant) setStateResponse(lastAssistant.content);
+      }
+    } catch (_) {}
+  };
+
+  const fetchDecisionHistory = async (tid) => {
+    try {
+      const res = await apiService.getDecisionHistory(tid);
+      setDecisionEngineMessages(res.messages || []);
+      // Pre-set decisionResponse if there is an active session
+      if (res.messages && res.messages.length > 0) {
+        const lastAssistant = [...res.messages].reverse().find(m => m.role === 'assistant');
+        if (lastAssistant) setDecisionResponse(lastAssistant.content);
+      }
+    } catch (_) {}
+  };
+
+  const sendStateChatMessage = async () => {
+    const text = stateChatInput.trim();
+    if (!text || loadingStateChat) return;
+
+    setStateManagerMessages(prev => [...prev, { role: 'user', content: text }]);
+    setStateChatInput('');
+    setLoadingStateChat(true);
+
+    try {
+      const res = await apiService.stateUpdate(text, getLocalDateString(), stateManagerThreadId);
+      setStateManagerMessages(prev => [...prev, { role: 'assistant', content: res.response }]);
+      setStateResponse(res.response);
+      fetchFiles(true);
+      fetchTodayLogCount();
+      fetchLogs('state', true);
+      fetchNeonStatus();
+    } catch (e) {
+      setStateManagerMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message}` }]);
+    } finally {
+      setLoadingStateChat(false);
+    }
+  };
+
+  const sendDecisionChatMessage = async () => {
+    const text = decisionChatInput.trim();
+    if (!text || loadingDecisionChat) return;
+
+    setDecisionEngineMessages(prev => [...prev, { role: 'user', content: text }]);
+    setDecisionChatInput('');
+    setLoadingDecisionChat(true);
+
+    try {
+      const res = await apiService.decisionGenerate(text, decisionEngineThreadId);
+      setDecisionEngineMessages(prev => [...prev, { role: 'assistant', content: res.response }]);
+      setDecisionResponse(res.response);
+      fetchLogs('decision');
+      fetchNeonStatus();
+    } catch (e) {
+      setDecisionEngineMessages(prev => [...prev, { role: 'assistant', content: `Error: ${e.message}` }]);
+    } finally {
+      setLoadingDecisionChat(false);
+    }
+  };
+
+  const lockStateSession = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Lock State Manager Session',
+      message: 'Are you sure you want to lock and conclude today\'s state manager session? This will finalize all edits.',
+      onConfirm: () => {
+        const nextId = crypto.randomUUID();
+        localStorage.setItem('mg_state_thread_id', nextId);
+        setStateManagerThreadId(nextId);
+        setStateManagerMessages([]);
+        setStateResponse('');
+        notify('Session finalized and locked.');
+      }
+    });
+  };
+
+  const lockDecisionSession = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Lock Decision Engine Session',
+      message: 'Are you sure you want to conclude and lock this decision plan? This concludes today\'s plan generation.',
+      onConfirm: () => {
+        const nextId = crypto.randomUUID();
+        localStorage.setItem('mg_decision_thread_id', nextId);
+        setDecisionEngineThreadId(nextId);
+        setDecisionEngineMessages([]);
+        setDecisionResponse('');
+        notify('Plan finalized and locked.');
+      }
+    });
   };
 
   const submitReflection = async () => {
@@ -437,8 +566,10 @@ export default function App() {
       fetchLogs('state');
       fetchTodayLogCount();
       fetchNeonStatus();
+      fetchStateHistory(stateManagerThreadId);
+      fetchDecisionHistory(decisionEngineThreadId);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, stateManagerThreadId, decisionEngineThreadId]);
 
   if (!isAuthenticated) {
     return (
@@ -563,6 +694,12 @@ export default function App() {
               setExpandedLogId={setExpandedLogId}
               todayLogCount={todayLogCount}
               backendConnected={backendConnected}
+              stateManagerMessages={stateManagerMessages}
+              stateChatInput={stateChatInput}
+              setStateChatInput={setStateChatInput}
+              sendStateChatMessage={sendStateChatMessage}
+              loadingStateChat={loadingStateChat}
+              lockStateSession={lockStateSession}
             />
           )}
 
@@ -578,6 +715,12 @@ export default function App() {
               expandedLogId={expandedLogId}
               setExpandedLogId={setExpandedLogId}
               backendConnected={backendConnected}
+              decisionEngineMessages={decisionEngineMessages}
+              decisionChatInput={decisionChatInput}
+              setDecisionChatInput={setDecisionChatInput}
+              sendDecisionChatMessage={sendDecisionChatMessage}
+              loadingDecisionChat={loadingDecisionChat}
+              lockDecisionSession={lockDecisionSession}
             />
           )}
 

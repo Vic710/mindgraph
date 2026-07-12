@@ -48,7 +48,12 @@ If scheduling is requested:
 
 Do not change long-term goals.
 Do not update Markdown files.
-You are responsible only for decision making."""
+You are responsible only for decision making.
+
+## How to behave
+- Be highly concise and direct. Do not yap, over-explain, or add unnecessary analogies/fluff unless requested.
+- Just tell the user the generated plan, decisions, or what they need to do clearly.
+- Keep any reasoning or explanations extremely short and focused."""
 
 # -------------------------------------------------------------------
 # Node
@@ -92,11 +97,12 @@ def agent_node(state: DecisionEngineState) -> Dict[str, Any]:
 # -------------------------------------------------------------------
 # Graph (no tools, just agent -> END)
 # -------------------------------------------------------------------
-def build_decision_engine_graph():
+def build_decision_engine_graph(checkpointer=None):
     workflow = StateGraph(DecisionEngineState)
     workflow.add_node("agent", agent_node)
     workflow.set_entry_point("agent")
     workflow.add_edge("agent", END)
-    return workflow.compile()
+    return workflow.compile(checkpointer=checkpointer)
 
-decision_engine_graph = build_decision_engine_graph()
+from backend.agents.chat_agent import chat_checkpointer
+decision_engine_graph = build_decision_engine_graph(chat_checkpointer)

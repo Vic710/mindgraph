@@ -65,6 +65,7 @@ Want:
 ## Health
 
 Gym is inconsistent because of internship.
+Low Vitamin D identified; started Vitamin D3 1000IU supplementation.
 
 Goal:
 Maintain health and gradually improve physique.

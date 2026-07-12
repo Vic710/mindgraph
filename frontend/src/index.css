@@ -256,6 +256,10 @@ body {
   backdrop-filter: blur(16px);
   padding: 24px;
   margin-bottom: 24px;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .card-title {
@@ -387,6 +391,11 @@ body {
   grid-template-columns: 380px 1fr 280px;
   gap: 20px;
   align-items: start;
+}
+
+.grid-2 > *,
+.grid-3 > * {
+  min-width: 0;
 }
 
 @media (max-width: 1400px) {
@@ -528,6 +537,15 @@ body {
   overflow-y: auto;
   color: var(--text-primary);
   line-height: 1.6;
+}
+
+.markdown-body {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+.markdown-body pre, .markdown-body code {
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
 }
 
 .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5 {

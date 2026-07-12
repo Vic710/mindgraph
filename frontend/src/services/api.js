@@ -36,14 +36,16 @@ export const apiService = {
   createSnapshot: () => request('/api/files/snapshot', { method: 'POST' }),
 
   // Agents  — all take { text } and return { response: string }
-  stateUpdate: (text, localDate) => request('/api/state/update', {
+  stateUpdate: (text, localDate, threadId) => request('/api/state/update', {
     method: 'POST',
-    body: JSON.stringify({ text, local_date: localDate }),
+    body: JSON.stringify({ text, local_date: localDate, thread_id: threadId }),
   }),
-  decisionGenerate: (text) => request('/api/decision/generate', {
+  decisionGenerate: (text, threadId) => request('/api/decision/generate', {
     method: 'POST',
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, thread_id: threadId }),
   }),
+  getStateHistory: (threadId) => request(`/api/state/history/${threadId}`),
+  getDecisionHistory: (threadId) => request(`/api/decision/history/${threadId}`),
   reflectionGenerate: (text = 'Run weekly reflection.') => request('/api/reflection/generate', {
     method: 'POST',
     body: JSON.stringify({ text }),

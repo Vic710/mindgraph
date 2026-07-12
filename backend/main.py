@@ -54,6 +54,7 @@ class FileUpdateRequest(BaseModel):
 class AgentRequest(BaseModel):
     text: str   # User's input message
     local_date: str = None
+    thread_id: str = None
 
 class DayLogRequest(BaseModel):
     note: str
@@ -151,32 +152,43 @@ def get_message_text(message) -> str:
 def run_state_manager(payload: AgentRequest):
     """
     Invoke the State Manager agent.
-    Today's day logger notes are automatically prepended as context before the user prompt.
+    Today's day logger notes are automatically prepended as context before the user prompt on the first turn.
     The agent uses the markdown_editor tool to directly write updated files to disk.
     Returns the agent's final response text.
     """
     if not payload.text.strip():
         raise HTTPException(status_code=400, detail="Input text cannot be empty")
     try:
-        # Inject today's day logger notes as supplementary context
-        today = payload.local_date or datetime.date.today().isoformat()
-        day_logs = get_day_logs(today)
+        config = {}
+        is_first = True
+        if payload.thread_id:
+            config = {"configurable": {"thread_id": payload.thread_id}}
+            try:
+                state = state_manager_graph.get_state(config)
+                if state and state.values and state.values.get("messages"):
+                    is_first = False
+            except Exception:
+                pass
+
+        # Inject today's day logger notes as supplementary context ONLY on first turn of the session
         augmented_text = payload.text
-        if day_logs:
-            notes_block = "DAY LOGGER NOTES (timestamped notes I jotted throughout the day — use as context):\n"
-            for entry in day_logs:
-                # Convert UTC ISO timestamp to a readable time
-                try:
-                    dt = datetime.datetime.fromisoformat(entry["created_at"])
-                    time_str = dt.strftime("%H:%M UTC")
-                except Exception:
-                    time_str = entry["created_at"]
-                notes_block += f"  [{time_str}] {entry['note']}\n"
-            augmented_text = f"{notes_block}\nUSER UPDATE:\n{payload.text}"
+        if is_first:
+            today = payload.local_date or datetime.date.today().isoformat()
+            day_logs = get_day_logs(today)
+            if day_logs:
+                notes_block = "DAY LOGGER NOTES (timestamped notes I jotted throughout the day — use as context):\n"
+                for entry in day_logs:
+                    try:
+                        dt = datetime.datetime.fromisoformat(entry["created_at"])
+                        time_str = dt.strftime("%H:%M UTC")
+                    except Exception:
+                        time_str = entry["created_at"]
+                    notes_block += f"  [{time_str}] {entry['note']}\n"
+                augmented_text = f"{notes_block}\nUSER UPDATE:\n{payload.text}"
 
         result = state_manager_graph.invoke({
             "messages": [HumanMessage(content=augmented_text)]
-        })
+        }, config=config)
         final_message = result["messages"][-1]
         response_text = get_message_text(final_message)
         log_response("state_manager", payload.text, response_text)
@@ -232,9 +244,13 @@ def run_decision_engine(payload: AgentRequest):
     if not payload.text.strip():
         raise HTTPException(status_code=400, detail="Input text cannot be empty")
     try:
+        config = {}
+        if payload.thread_id:
+            config = {"configurable": {"thread_id": payload.thread_id}}
+
         result = decision_engine_graph.invoke({
             "messages": [HumanMessage(content=payload.text)]
-        })
+        }, config=config)
         final_message = result["messages"][-1]
         response_text = get_message_text(final_message)
         log_response("decision_engine", payload.text, response_text)
@@ -342,6 +358,58 @@ def get_chat_history(thread_id: str):
                 if content.startswith("[CONTEXT LOAD]"):
                     continue
                 if content == "Got it. I've read through your context — goals, current state, decisions, and principles. I'm ready. What's on your mind?":
+                    continue
+                
+                messages.append({
+                    "role": role,
+                    "content": content
+                })
+        return {"messages": messages}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/state/history/{thread_id}")
+def get_state_history(thread_id: str):
+    """Retrieve turn history for state manager sessions."""
+    try:
+        config = {"configurable": {"thread_id": thread_id}}
+        state = state_manager_graph.get_state(config)
+        messages = []
+        if state and "messages" in state.values:
+            for msg in state.values["messages"]:
+                role = "user" if msg.type == "human" else "assistant"
+                content = get_message_text(msg)
+                
+                # Filter out raw context dump
+                if content.startswith("CURRENT DATE:") or content.startswith("CURRENT KNOWLEDGE BASE:"):
+                    continue
+                
+                # Clean up logger notes prefix if it's user's first turn
+                if "USER UPDATE:\n" in content:
+                    content = content.split("USER UPDATE:\n", 1)[1]
+                
+                messages.append({
+                    "role": role,
+                    "content": content
+                })
+        return {"messages": messages}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/decision/history/{thread_id}")
+def get_decision_history(thread_id: str):
+    """Retrieve turn history for decision engine sessions."""
+    try:
+        config = {"configurable": {"thread_id": thread_id}}
+        state = decision_engine_graph.get_state(config)
+        messages = []
+        if state and "messages" in state.values:
+            for msg in state.values["messages"]:
+                role = "user" if msg.type == "human" else "assistant"
+                content = get_message_text(msg)
+                
+                # Filter out raw context dump
+                if content.startswith("USER STATE OF TRUTH:"):
                     continue
                 
                 messages.append({
