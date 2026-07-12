@@ -28,14 +28,14 @@ export function FileExplorer({
           </div>
         ) : (
           files.map(file => (
-            <div
+            <button
               key={file.name}
               className={`file-item ${selectedFile === file.name ? 'active' : ''}`}
               onClick={() => loadFile(file.name)}
             >
               <FileText size={15} style={{ opacity: 0.5 }} />
               <span>{file.title || file.name}</span>
-            </div>
+            </button>
           ))
         )}
       </div>

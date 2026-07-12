@@ -456,6 +456,14 @@ body {
 }
 
 .file-item {
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  font-family: inherit;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   padding: 10px 14px;
   border-radius: var(--radius-md);
   font-size: 0.9rem;
