@@ -216,6 +216,17 @@ body {
   color: var(--text-secondary);
 }
 
+.status-badge.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.status-badge.clickable:hover {
+  background-color: var(--glass-highlight);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
 .status-dot {
   width: 8px;
   height: 8px;
@@ -920,7 +931,8 @@ body {
     font-size: 1rem;
   }
 
-  .date-display {
+  .date-display,
+  .reconnect-btn-text {
     display: none;
   }
 

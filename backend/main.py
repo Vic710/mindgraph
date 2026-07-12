@@ -53,9 +53,11 @@ class FileUpdateRequest(BaseModel):
 
 class AgentRequest(BaseModel):
     text: str   # User's input message
+    local_date: str = None
 
 class DayLogRequest(BaseModel):
     note: str
+    created_at: str = None
 
 # ------------------------------------------------------------------ #
 # File Endpoints
@@ -157,7 +159,7 @@ def run_state_manager(payload: AgentRequest):
         raise HTTPException(status_code=400, detail="Input text cannot be empty")
     try:
         # Inject today's day logger notes as supplementary context
-        today = datetime.date.today().isoformat()
+        today = payload.local_date or datetime.date.today().isoformat()
         day_logs = get_day_logs(today)
         augmented_text = payload.text
         if day_logs:
@@ -193,7 +195,7 @@ def create_day_log(payload: DayLogRequest):
     if not payload.note.strip():
         raise HTTPException(status_code=400, detail="Note cannot be empty")
     try:
-        entry = add_day_log(payload.note)
+        entry = add_day_log(payload.note, payload.created_at)
         push_to_neon()  # Auto-sync changes to cloud
         return entry
     except Exception as e:

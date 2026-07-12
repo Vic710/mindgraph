@@ -69,16 +69,17 @@ def delete_log(log_id: int) -> None:
 # Day Logger — timestamped personal notes stored throughout the day
 # ------------------------------------------------------------------ #
 
-def add_day_log(note: str) -> dict:
+def add_day_log(note: str, created_at: str = None) -> dict:
     """Save a new day log note. Returns the saved entry."""
     conn = _get_conn()
-    now = datetime.utcnow().isoformat()
+    if not created_at:
+        created_at = datetime.utcnow().isoformat()
     cursor = conn.execute(
         "INSERT INTO day_logs (note, created_at) VALUES (?, ?)",
-        (note.strip(), now)
+        (note.strip(), created_at)
     )
     conn.commit()
-    return {"id": cursor.lastrowid, "note": note.strip(), "created_at": now}
+    return {"id": cursor.lastrowid, "note": note.strip(), "created_at": created_at}
 
 def get_day_logs(date_str: str = None) -> list[dict]:
     """
@@ -90,7 +91,7 @@ def get_day_logs(date_str: str = None) -> list[dict]:
     conn = _get_conn()
     cursor = conn.execute(
         "SELECT id, note, created_at FROM day_logs "
-        "WHERE date(created_at) = ? ORDER BY created_at ASC",
+        "WHERE substr(created_at, 1, 10) = ? ORDER BY created_at ASC",
         (date_str,)
     )
     return [

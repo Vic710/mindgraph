@@ -36,9 +36,9 @@ export const apiService = {
   createSnapshot: () => request('/api/files/snapshot', { method: 'POST' }),
 
   // Agents  — all take { text } and return { response: string }
-  stateUpdate: (text) => request('/api/state/update', {
+  stateUpdate: (text, localDate) => request('/api/state/update', {
     method: 'POST',
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, local_date: localDate }),
   }),
   decisionGenerate: (text) => request('/api/decision/generate', {
     method: 'POST',
@@ -63,7 +63,7 @@ export const apiService = {
   deleteLog: (id) => request(`/api/logs/${id}`, { method: 'DELETE' }),
 
   // Day Logger — timestamped personal notes
-  addDayLog: (note) => request('/api/daylog', { method: 'POST', body: JSON.stringify({ note }) }),
+  addDayLog: (note, createdAt) => request('/api/daylog', { method: 'POST', body: JSON.stringify({ note, created_at: createdAt }) }),
   getDayLogs: (date) => request(`/api/daylog${date ? `?date=${date}` : ''}`),
   deleteDayLog: (id) => request(`/api/daylog/${id}`, { method: 'DELETE' }),
 

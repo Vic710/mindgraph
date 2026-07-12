@@ -218,11 +218,41 @@ function HistoryPanel({ logs, loading, expandedId, onExpand, agentLabel }) {
 }
 
 // ------------------------------------------------------------------ //
+// Timezone and Date helpers
+// ------------------------------------------------------------------ //
+const getLocalDateString = (date = new Date()) => {
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+  return localDate.toISOString().split('T')[0];
+};
+
+const getLocalISOString = (date = new Date()) => {
+  const offset = date.getTimezoneOffset();
+  const offsetSign = offset > 0 ? '-' : '+';
+  const absOffset = Math.abs(offset);
+  const offsetHours = String(Math.floor(absOffset / 60)).padStart(2, '0');
+  const offsetMinutes = String(absOffset % 60).padStart(2, '0');
+  
+  const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+  const iso = localDate.toISOString();
+  return iso.substring(0, iso.length - 1) + `${offsetSign}${offsetHours}:${offsetMinutes}`;
+};
+
+const parseDateSafe = (dateStr) => {
+  if (!dateStr) return new Date();
+  if (dateStr.endsWith('Z') || dateStr.includes('+') || (dateStr.includes('-') && dateStr.lastIndexOf('-') > 7)) {
+    return new Date(dateStr);
+  }
+  return new Date(dateStr + 'Z');
+};
+
+// ------------------------------------------------------------------ //
 // Main App
 // ------------------------------------------------------------------ //
 export default function App() {
   const [activeTab, setActiveTab] = useState('state');
   const [backendConnected, setBackendConnected] = useState(true);
+  const [checkingConnection, setCheckingConnection] = useState(false);
   const [notification, setNotification] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -273,7 +303,7 @@ export default function App() {
   const [dayLogs, setDayLogs] = useState([]);
   const [dayLogInput, setDayLogInput] = useState('');
   const [loadingDayLogs, setLoadingDayLogs] = useState(false);
-  const [dayLogDate, setDayLogDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [dayLogDate, setDayLogDate] = useState(() => getLocalDateString());
   const [todayLogCount, setTodayLogCount] = useState(0);
   const dayLogInputRef = useRef(null);
 
@@ -286,6 +316,34 @@ export default function App() {
   const notify = (text, type = 'success') => {
     setNotification({ text, type });
     setTimeout(() => setNotification(null), 4000);
+  };
+
+  // --- Reconnect helper ---
+  const handleReconnect = async () => {
+    if (checkingConnection) return;
+    setCheckingConnection(true);
+    try {
+      const statusRes = await apiService.getNeonStatus();
+      setBackendConnected(true);
+      setNeonAvailable(statusRes.available);
+      if (statusRes.last_synced_at) setNeonLastSynced(statusRes.last_synced_at);
+      
+      await fetchFiles(true);
+      await fetchTodayLogCount();
+      await fetchThreads();
+      
+      if (['state', 'decision', 'reflection'].includes(activeTab)) {
+        fetchLogs(activeTab);
+      } else if (activeTab === 'logger') {
+        fetchDayLogs(dayLogDate);
+      }
+      notify('API connected successfully!');
+    } catch (e) {
+      setBackendConnected(false);
+      notify('Cannot reach backend API.', 'error');
+    } finally {
+      setCheckingConnection(false);
+    }
   };
 
   // --- File helpers ---
@@ -347,7 +405,7 @@ export default function App() {
     setLoadingState(true);
     setStateResponse('');
     try {
-      const res = await apiService.runState_manager(stateInput);
+      const res = await apiService.stateUpdate(stateInput, getLocalDateString());
       setStateResponse(res.response);
       setStateInput('');
       notify('State updated successfully.');
@@ -502,7 +560,7 @@ export default function App() {
 
   const fetchTodayLogCount = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       const res = await apiService.getDayLogs(today);
       setTodayLogCount((res.logs || []).length);
     } catch (_) {}
@@ -521,7 +579,7 @@ export default function App() {
     const optimisticEntry = {
       id: tempId,
       note: note,
-      created_at: new Date().toISOString(),
+      created_at: getLocalISOString(),
       isOptimistic: true
     };
 
@@ -530,7 +588,7 @@ export default function App() {
     setTodayLogCount(prev => prev + 1);
 
     try {
-      const realEntry = await apiService.addDayLog(note);
+      const realEntry = await apiService.addDayLog(note, getLocalISOString());
       
       // Replace optimistic entry with the server's database entry
       setDayLogs(prev => prev.map(item => item.id === tempId ? realEntry : item));
@@ -560,21 +618,21 @@ export default function App() {
     } catch (e) {
       // Rollback to original logs on failure
       setDayLogs(originalLogs);
-      const today = new Date().toISOString().split('T')[0];
+      const today = getLocalDateString();
       if (dayLogDate === today) fetchTodayLogCount();
       notify('Failed to delete note from cloud.', 'error');
     }
   };
 
   const shiftDayLogDate = (delta) => {
-    const d = new Date(dayLogDate);
+    const d = new Date(dayLogDate + 'T12:00:00');
     d.setDate(d.getDate() + delta);
-    const newDate = d.toISOString().split('T')[0];
+    const newDate = getLocalDateString(d);
     setDayLogDate(newDate);
     fetchDayLogs(newDate);
   };
 
-  const isToday = dayLogDate === new Date().toISOString().split('T')[0];
+  const isToday = dayLogDate === getLocalDateString();
 
   // --- Authentication ---
   const handleLogin = async (e) => {
@@ -746,9 +804,21 @@ export default function App() {
             {loadingSnapshot ? <RefreshCw size={14} className="loading-spinner" /> : <Camera size={14} />}
             <span>Snapshot Brain</span>
           </button>
-          <div className="status-badge">
-            <span className={`status-dot ${backendConnected ? '' : 'warning'}`} />
-            <span>{backendConnected ? 'API Online' : 'API Offline'}</span>
+          <div
+            className="status-badge clickable"
+            onClick={handleReconnect}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between', width: '100%' }}
+            title="Click to reconnect / check status"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className={`status-dot ${backendConnected ? '' : 'warning'}`} />
+              <span>{backendConnected ? 'API Online' : 'API Offline'}</span>
+            </div>
+            <RefreshCw
+              size={12}
+              className={checkingConnection ? 'loading-spinner' : ''}
+              style={{ opacity: 0.6 }}
+            />
           </div>
         </div>
       </aside>
@@ -778,6 +848,37 @@ export default function App() {
               <Clock size={14} />
               <span className="date-display">{new Date().toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</span>
             </div>
+            <button
+              onClick={handleReconnect}
+              className="btn btn-secondary"
+              style={{
+                padding: '6px 10px',
+                minHeight: '32px',
+                fontSize: '0.8rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                borderColor: backendConnected ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)',
+                color: backendConnected ? 'var(--text-primary)' : 'var(--danger)',
+              }}
+              title="Check Connection & Reload API"
+              disabled={checkingConnection}
+            >
+              <RefreshCw
+                size={14}
+                className={checkingConnection ? 'loading-spinner' : ''}
+                style={{
+                  color: checkingConnection
+                    ? 'var(--accent-primary)'
+                    : backendConnected
+                    ? 'var(--success)'
+                    : 'var(--danger)',
+                }}
+              />
+              <span className="reconnect-btn-text">
+                {checkingConnection ? 'Checking...' : backendConnected ? 'Online' : 'Offline'}
+              </span>
+            </button>
             <button
               onClick={handleLogout}
               className="btn btn-secondary"
@@ -1293,6 +1394,7 @@ export default function App() {
           )}
 
         </main>
+      </div>
       {/* Custom Confirmation Modal */}
       {confirmModal.isOpen && (
         <div className="modal-overlay">
