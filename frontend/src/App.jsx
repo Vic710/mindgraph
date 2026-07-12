@@ -344,12 +344,23 @@ export default function App() {
       title: 'Delete Past Response',
       message: 'Are you sure you want to permanently delete this past response from your history?',
       onConfirm: async () => {
+        // Optimistically remove the log from local state immediately
+        const agentMap = { state: 'state_manager', decision: 'decision_engine', reflection: 'reflection' };
+        const key = agentMap[agentKey];
+        if (key) {
+          setAgentLogs(prev => ({
+            ...prev,
+            [key]: (prev[key] || []).filter(log => log.id !== id)
+          }));
+        }
+
         try {
           await apiService.deleteLog(id);
           notify('Response deleted.');
           fetchLogs(agentKey, true);
         } catch (_) {
           notify('Failed to delete response.', 'error');
+          fetchLogs(agentKey, false); // Restore original list on error
         }
       }
     });
