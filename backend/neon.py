@@ -36,7 +36,7 @@ DB_SQLITE_PATH = str(WORKSPACE_DIR / "chat_memory.db")
 LIFE_FILES = [
     "0_context.md", "1_goals.md", "2_projects.md", "3_current_state.md",
     "4_decisions.md", "5_daily_log.md", "6_weekly_review.md",
-    "7_ideas.md", "8_principles.md",
+    "7_ideas.md", "8_principles.md", "9_today_plan.md"
 ]
 
 _last_synced_at: str | None = None   # ISO string, UTC

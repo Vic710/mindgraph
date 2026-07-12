@@ -76,7 +76,7 @@ def load_all_life_files() -> str:
     files_to_read = [
         "0_context.md", "1_goals.md", "2_projects.md", "3_current_state.md",
         "4_decisions.md", "5_daily_log.md", "6_weekly_review.md",
-        "7_ideas.md", "8_principles.md"
+        "7_ideas.md", "8_principles.md", "9_today_plan.md"
     ]
     sections = []
     for filename in files_to_read:

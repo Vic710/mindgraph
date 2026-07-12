@@ -235,6 +235,14 @@ def remove_day_log(log_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def write_today_plan(content: str):
+    """Save the decision plan to 9_today_plan.md so chat agent can read it."""
+    try:
+        filepath = LIFE_DIR / "9_today_plan.md"
+        filepath.write_text(content, encoding="utf-8")
+    except Exception as e:
+        print(f"[ERROR] Failed to write 9_today_plan.md: {e}")
+
 @app.post("/api/decision/generate")
 def run_decision_engine(payload: AgentRequest):
     """
@@ -254,6 +262,10 @@ def run_decision_engine(payload: AgentRequest):
         final_message = result["messages"][-1]
         response_text = get_message_text(final_message)
         log_response("decision_engine", payload.text, response_text)
+        
+        # Write plan to 9_today_plan.md automatically
+        write_today_plan(response_text)
+        
         push_to_neon()  # Auto-sync changes to cloud
         return {"response": response_text}
     except Exception as e:
