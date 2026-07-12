@@ -455,6 +455,24 @@ def delete_thread(thread_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.delete("/api/state/{thread_id}")
+def delete_state_thread(thread_id: str):
+    """Delete all checkpoint rows for a State Manager session thread."""
+    try:
+        delete_thread_by_id(thread_id)
+        return {"status": "deleted", "thread_id": thread_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/decision/{thread_id}")
+def delete_decision_thread(thread_id: str):
+    """Delete all checkpoint rows for a Decision Engine session thread."""
+    try:
+        delete_thread_by_id(thread_id)
+        return {"status": "deleted", "thread_id": thread_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ------------------------------------------------------------------ #
 # Neon Sync Endpoints

@@ -311,13 +311,16 @@ export default function App() {
       isOpen: true,
       title: 'Lock State Manager Session',
       message: 'Are you sure you want to lock and conclude today\'s state manager session? This will finalize all edits.',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const oldId = stateManagerThreadId;
         const nextId = `state-${crypto.randomUUID()}`;
         localStorage.setItem('mg_state_thread_id', nextId);
         setStateManagerThreadId(nextId);
         setStateManagerMessages([]);
         setStateResponse('');
         notify('Session finalized and locked.');
+        // Delete old thread from DB in background
+        try { await apiService.deleteStateThread(oldId); } catch (_) {}
       }
     });
   };
@@ -327,13 +330,16 @@ export default function App() {
       isOpen: true,
       title: 'Lock Decision Engine Session',
       message: 'Are you sure you want to conclude and lock this decision plan? This concludes today\'s plan generation.',
-      onConfirm: () => {
+      onConfirm: async () => {
+        const oldId = decisionEngineThreadId;
         const nextId = `decision-${crypto.randomUUID()}`;
         localStorage.setItem('mg_decision_thread_id', nextId);
         setDecisionEngineThreadId(nextId);
         setDecisionEngineMessages([]);
         setDecisionResponse('');
         notify('Plan finalized and locked.');
+        // Delete old thread from DB in background
+        try { await apiService.deleteDecisionThread(oldId); } catch (_) {}
       }
     });
   };

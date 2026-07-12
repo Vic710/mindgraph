@@ -59,6 +59,8 @@ export const apiService = {
   listThreads: () => request('/api/chat/threads'),
   deleteThread: (threadId) => request(`/api/chat/${threadId}`, { method: 'DELETE' }),
   getChatHistory: (threadId) => request(`/api/chat/${threadId}/history`),
+  deleteStateThread: (threadId) => request(`/api/state/${threadId}`, { method: 'DELETE' }),
+  deleteDecisionThread: (threadId) => request(`/api/decision/${threadId}`, { method: 'DELETE' }),
 
   // Agent Logs
   getLogs: (agent, limit = 30) => request(`/api/logs${agent ? `?agent=${agent}&limit=${limit}` : `?limit=${limit}`}`),
