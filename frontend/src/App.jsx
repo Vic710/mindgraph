@@ -226,6 +226,7 @@ export default function App() {
     try {
       const res = await apiService.decisionGenerate(decisionInput, decisionEngineThreadId);
       setDecisionResponse(res.response);
+      setDecisionInput('');
       notify('Decision Engine generated your plan.');
       fetchLogs('decision');
       fetchNeonStatus(); // Refresh sync timestamp
@@ -337,6 +338,7 @@ export default function App() {
         setDecisionEngineThreadId(nextId);
         setDecisionEngineMessages([]);
         setDecisionResponse('');
+        setDecisionInput('');
         notify('Plan finalized and locked.');
         // Delete old thread from DB in background
         try { await apiService.deleteDecisionThread(oldId); } catch (_) {}
