@@ -48,7 +48,77 @@ def markdown_editor(filename: str, content: str) -> str:
     except Exception as e:
         return f"ERROR writing '{filename}': {str(e)}"
 
-TOOLS = [markdown_editor]
+# -------------------------------------------------------------------
+# Tool: Append Daily Log Entry
+# -------------------------------------------------------------------
+@tool
+def append_daily_log(date: str, entry: str) -> str:
+    """
+    Append a chronological bullet point entry to 5_daily_log.md under a specific date section.
+
+    Use this tool whenever you need to add an activity, accomplishment, milestone, or log note to 5_daily_log.md.
+    Provide:
+    - date: ISO date string (e.g., '2026-07-12')
+    - entry: The bullet point note text (e.g., 'Completed college TnP form.')
+    """
+    filepath = LIFE_DIR / "5_daily_log.md"
+    try:
+        content = ""
+        if filepath.exists():
+            content = filepath.read_text(encoding="utf-8")
+        
+        lines = content.splitlines()
+        
+        # Check if the date section already exists
+        header = f"## {date}"
+        header_index = -1
+        for idx, line in enumerate(lines):
+            if line.strip() == header:
+                header_index = idx
+                break
+        
+        entry_line = f"- {entry}"
+        
+        if header_index != -1:
+            # Date section exists. Append after the last bullet point of this section.
+            insert_idx = header_index + 1
+            while insert_idx < len(lines):
+                next_line = lines[insert_idx].strip()
+                if next_line.startswith("#"):
+                    break
+                insert_idx += 1
+            # Backtrack past trailing empty lines to keep it tidy
+            while insert_idx > header_index + 1 and lines[insert_idx - 1].strip() == "":
+                insert_idx -= 1
+            lines.insert(insert_idx, entry_line)
+        else:
+            # Date section does not exist. Insert section at the top of the file, right after the main header.
+            insert_idx = 0
+            for idx, line in enumerate(lines):
+                if line.strip().startswith("# Daily Log") or line.strip().startswith("#Daily Log"):
+                    insert_idx = idx + 1
+                    break
+            
+            # Skip sub-header or introductory text if present
+            while insert_idx < len(lines) and (lines[insert_idx].strip() == "" or lines[insert_idx].strip().startswith("*")):
+                insert_idx += 1
+                
+            new_section = [
+                "",
+                f"## {date}",
+                entry_line
+            ]
+            for line in reversed(new_section):
+                lines.insert(insert_idx, line)
+                
+        # Join lines and write back
+        new_content = "\n".join(lines) + "\n"
+        filepath.write_text(new_content, encoding="utf-8")
+        return f"OK: Added log entry to 5_daily_log.md under section '{date}'."
+    except Exception as e:
+        return f"ERROR appending to daily log: {str(e)}"
+
+TOOLS = [markdown_editor, append_daily_log]
 
 # -------------------------------------------------------------------
 # System Prompt
@@ -77,7 +147,9 @@ jotted throughout the day. Use these notes as supplementary context to understan
 fill gaps in the user's end-of-day summary. When writing to 5_daily_log.md, synthesize both the logger notes
 and the USER UPDATE into a coherent chronological entry. Do not copy logger notes verbatim — extract signal.
 
-When files need updating, call the `markdown_editor` tool once per file.
+When files need updating, call the appropriate tool:
+- Use the `append_daily_log` tool specifically for adding new daily log entry bullet points to '5_daily_log.md'.
+- Use the `markdown_editor` tool to write or overwrite other files (like '1_goals.md', '3_current_state.md', etc.). Avoid overwriting '5_daily_log.md' entirely unless performing non-append structural cleanup.
 Only update files that actually changed.
 If no files need updating, say so clearly.
 

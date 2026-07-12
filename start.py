@@ -62,15 +62,8 @@ def start_services():
     print("==================================================\n")
     
     try:
-        # Loop and check status
+        # Loop and wait for Ctrl+C
         while True:
-            # Check if backend or frontend terminated
-            if backend_proc.poll() is not None:
-                print("[WARN] Backend server terminated.")
-                break
-            if frontend_proc.poll() is not None:
-                print("[WARN] Frontend dev server terminated.")
-                break
             time.sleep(1)
     except KeyboardInterrupt:
         print("\n[!] Shutting down services...")
